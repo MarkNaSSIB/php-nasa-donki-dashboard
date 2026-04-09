@@ -4,6 +4,7 @@
 const apiEndpoint = '/api.php';
 let currentRange = 30;
 let charts = {};
+let _resizeTimer = null;
 
 function el(id) { return document.getElementById(id); }
 
@@ -26,6 +27,44 @@ function formatTime(iso) {
   const min = String(d.getUTCMinutes()).padStart(2, '0');
   return `${yyyy}-${mm}-${dd} ${hh}:${min} UTC`;
 }
+
+/* ---------- Small helpers added ---------- */
+
+// Ensure canvas has a sane height before Chart.js measures it
+function ensureCanvasHeight(id, px = 320) {
+  const c = el(id);
+  if (!c) return;
+  c.setAttribute('height', px);
+  c.style.height = px + 'px';
+  c.style.minHeight = px + 'px';
+}
+
+// Debounced global resize/update to avoid tight loops
+function safeResizeAll(delay = 200) {
+  clearTimeout(_resizeTimer);
+  _resizeTimer = setTimeout(() => {
+    Object.values(charts).forEach(ch => {
+      try { if (ch) { ch.resize(); ch.update(); } } catch (e) { /* ignore */ }
+    });
+  }, delay);
+}
+
+// Sanitize numeric arrays (coerce, drop NaN, clamp, limit length)
+function safeNumbers(arr, opts = {}) {
+  const maxLen = opts.maxLen || 1000;
+  const minVal = (typeof opts.min === 'number') ? opts.min : -1e9;
+  const maxVal = (typeof opts.max === 'number') ? opts.max : 1e9;
+  if (!Array.isArray(arr)) return [];
+  const out = [];
+  for (let i = 0; i < arr.length && out.length < maxLen; i++) {
+    const n = Number(arr[i]);
+    if (!Number.isFinite(n)) continue;
+    out.push(Math.max(minVal, Math.min(maxVal, n)));
+  }
+  return out;
+}
+
+/* ---------- Existing UI builders (unchanged except small sanitization) ---------- */
 
 function buildSummaryCards(data) {
   const cards = [];
@@ -93,11 +132,13 @@ function buildTableHtmlForRads(rads) {
     <tbody>${rows.join('')}</tbody></table>`;
 }
 
+/* ---------- Chart updates with minimal, safe changes ---------- */
+
 function updateCharts(data) {
   // Flare chart: aggregated counts by class
   const flareAgg = data.flareAgg || {};
   const flareLabels = Object.keys(flareAgg);
-  const flareValues = flareLabels.map(k => flareAgg[k] || 0);
+  const flareValues = safeNumbers(flareLabels.map(k => flareAgg[k] || 0), { maxLen: 100 });
   const flareColors = flareLabels.map(l => {
     if (l === 'X') return '#ff4d4d';
     if (l === 'M') return '#ff9933';
@@ -106,6 +147,8 @@ function updateCharts(data) {
     return '#888';
   });
 
+  // Ensure canvas baseline before Chart.js measures
+  ensureCanvasHeight('flareChart', 320);
   if (charts.flare) charts.flare.destroy();
   charts.flare = new Chart(el('flareChart'), {
     type: 'bar',
@@ -116,7 +159,8 @@ function updateCharts(data) {
   // CME chart: buckets
   const cmeAgg = data.cmeAgg || {};
   const cmeLabels = Object.keys(cmeAgg);
-  const cmeValues = cmeLabels.map(k => cmeAgg[k] || 0);
+  const cmeValues = safeNumbers(cmeLabels.map(k => cmeAgg[k] || 0), { maxLen: 100 });
+  ensureCanvasHeight('cmeChart', 320);
   if (charts.cme) charts.cme.destroy();
   charts.cme = new Chart(el('cmeChart'), {
     type: 'bar',
@@ -127,13 +171,17 @@ function updateCharts(data) {
   // Radiation chart
   const radAgg = data.radAgg || {};
   const radLabels = Object.keys(radAgg);
-  const radValues = radLabels.map(k => radAgg[k] || 0);
+  const radValues = safeNumbers(radLabels.map(k => radAgg[k] || 0), { maxLen: 100 });
+  ensureCanvasHeight('radChart', 320);
   if (charts.rad) charts.rad.destroy();
   charts.rad = new Chart(el('radChart'), {
     type: 'bar',
     data: { labels: radLabels, datasets: [{ label: 'Count', data: radValues, backgroundColor: '#ffcc00' }] },
     options: { responsive: true, maintainAspectRatio: false }
   });
+
+  // After creating charts, schedule a safe resize to stabilize layout
+  safeResizeAll(150);
 }
 
 function updateTables(data) {
@@ -160,7 +208,9 @@ function setupControls() {
   sel.value = String(currentRange);
   sel.addEventListener('change', () => {
     currentRange = parseInt(sel.value, 10);
-    refresh(currentRange);
+    // debounce quick changes from user
+    clearTimeout(_resizeTimer);
+    _resizeTimer = setTimeout(() => refresh(currentRange), 200);
   });
 
   // Collapsible toggles
@@ -171,11 +221,27 @@ function setupControls() {
       if (!target) return;
       const collapsed = target.classList.toggle('collapsed');
       btn.textContent = collapsed ? 'Show details' : 'Hide details';
+
+      // After expanding, give layout a moment then resize charts
+      if (!collapsed) {
+        setTimeout(() => safeResizeAll(100), 260);
+      }
     });
   });
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   setupControls();
+
+  // Give canvases a stable baseline immediately to avoid Chart.js measuring transient sizes
+  ['flareChart','cmeChart','radChart'].forEach(id => {
+    const c = el(id);
+    if (c) {
+      c.style.minHeight = '320px';
+      c.style.height = '320px';
+      c.setAttribute('height', 320);
+    }
+  });
+
   refresh(currentRange);
 });
