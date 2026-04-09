@@ -1,3 +1,6 @@
+<?php file_put_contents('debug.log', "HIT: " . $_SERVER['REQUEST_URI'] . "\n", FILE_APPEND); ?>
+
+
 <?php
 require_once 'functions.php';
 
