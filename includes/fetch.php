@@ -41,7 +41,7 @@ function cache_set(string $key, $data) {
  * Perform a single HTTP GET and return array|null.
  * Logs status, body length and a short snippet for debugging.
  */
-function fetch_url_and_decode(string $url, int $timeout = 15, int $maxSnippet = 2048) {
+function fetch_url_and_decode(string $url, int $timeout = 30, int $maxSnippet = 2048) {
     $ch = curl_init();
     $opts = [
         CURLOPT_URL => $url,
@@ -148,47 +148,6 @@ function fetch_nasa(string $feed, array $params = [], int $cacheTtlSeconds = 900
         } catch (Throwable $e) {
             error_log("FETCH_NASA DATE_PARSE_ERROR: " . $e->getMessage());
             $days = 0;
-        }
-
-        // If range > 30 days, attempt chunked fetch (30-day windows)
-        if ($days > 30) {
-            error_log("FETCH_NASA FALLBACK chunked fetch feed={$feed} days={$days} url={$url}");
-            $chunkSize = 30;
-            $chunks = [];
-            $cursor = $start;
-            while ($cursor < $end) {
-                $chunkStart = $cursor;
-                $chunkEnd = $cursor->add(new DateInterval("P{$chunkSize}D"));
-                if ($chunkEnd > $end) $chunkEnd = $end;
-                $chunks[] = [
-                    'startDate' => $chunkStart->format('Y-m-d'),
-                    'endDate'   => $chunkEnd->format('Y-m-d'),
-                ];
-                $cursor = $chunkEnd->add(new DateInterval('P1D')); // next day after chunkEnd
-            }
-
-            $merged = [];
-            foreach ($chunks as $c) {
-                $qsChunk = http_build_query(array_merge($c, ['api_key' => $apiKey]));
-                $urlChunk = rtrim($apiBase, '/') . '/' . rawurlencode($feed) . '?' . $qsChunk;
-                error_log("FETCH_NASA CHUNK url={$urlChunk}");
-                $chunkData = fetch_url_and_decode($urlChunk);
-                if (is_array($chunkData)) {
-                    // merge arrays (DONKI returns arrays of objects)
-                    $merged = array_merge($merged, $chunkData);
-                } else {
-                    error_log("FETCH_NASA CHUNK_EMPTY feed={$feed} chunk=" . json_encode($c));
-                }
-            }
-
-            if (!empty($merged)) {
-                // Cache merged result under the original cache key
-                cache_set($cacheKey, $merged);
-                error_log("FETCH_NASA CHUNKED_SUCCESS feed={$feed} merged_count=" . count($merged));
-                return $merged;
-            } else {
-                error_log("FETCH_NASA CHUNKED_FAILED feed={$feed} no merged results");
-            }
         }
     }
 

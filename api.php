@@ -20,8 +20,8 @@ require_once __DIR__ . '/includes/fetch.php';
 require_once __DIR__ . '/includes/charts.php';
 
 // ---- Configuration ----
-$DEFAULT_RANGE = 30;
-$ALLOWED_UI_RANGES = [30, 60, 90]; // values the UI exposes
+$DEFAULT_RANGE = 14;
+$ALLOWED_UI_RANGES = [7, 14, 30]; // values the UI exposes
 $MAX_RANGE_DAYS = 365;             // safety upper bound
 $CACHE_TTL = 600;                  // seconds for fetch_nasa caching
 

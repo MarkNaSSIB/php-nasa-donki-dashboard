@@ -33,9 +33,9 @@ require_once 'includes/format.php';
     <div class="controls">
       <label for="rangeSelect">Range:</label>
       <select id="rangeSelect" aria-label="Select data range">
+        <option value="7">7 days</option>
+        <option value="14">14 days</option>
         <option value="30">30 days</option>
-        <option value="60">60 days</option>
-        <option value="90">90 days</option>
       </select>
       <span id="lastUpdated" class="info"></span>
     </div>
