@@ -1,117 +1,136 @@
-/* public/styles.css - updated for dynamic UI */
+/* public/styles.css - refactored */
+
+/* Base */
 body {
-    margin: 0;
-    padding: 0;
-    font-family: Arial, Helvetica, sans-serif;
-    background: #0b0e13;
-    color: #e6e6e6;
-    line-height: 1.6;
-    scroll-behavior: smooth;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: #0b0e13;
+  color: #e6e6e6;
+  line-height: 1.6;
+  scroll-behavior: smooth;
 }
 
+/* Header */
 .fixed-header {
-    position: fixed;
-    top: 0;
-    width: 100%;
-    background: #0f1720;
-    border-bottom: 1px solid #1f242d;
-    z-index: 1000;
+  position: fixed;
+  top: 0;
+  width: 100%;
+  background: #0f1720;
+  border-bottom: 1px solid #1f242d;
+  z-index: 1000;
 }
-
 .header-inner {
-    max-width: 1100px;
-    margin: auto;
-    padding: 12px 20px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
+  max-width: 1100px;
+  margin: auto;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
-
-.fixed-header h1 {
-    margin: 0;
-    font-size: 20px;
-    color: #7abaff;
-}
-
-nav a {
-    margin-left: 18px;
-    color: #9cd2ff;
-    text-decoration: none;
-    font-size: 14px;
-}
+.fixed-header h1 { margin: 0; font-size: 20px; color: #7abaff; }
+nav a { margin-left: 18px; color: #9cd2ff; text-decoration: none; font-size: 14px; }
 
 .page-offset { height: 64px; }
-
 main { max-width: 1100px; margin: 30px auto; padding: 0 20px; }
 
+/* Sections */
 section {
-    background: #141820;
-    border-radius: 8px;
-    border: 1px solid #1f242d;
-    box-shadow: 0 0 10px rgba(0,0,0,0.4);
-    padding: 18px;
-    margin-bottom: 20px;
+  background: #141820;
+  border-radius: 8px;
+  border: 1px solid #1f242d;
+  box-shadow: 0 0 10px rgba(0,0,0,0.4);
+  padding: 18px;
+  margin-bottom: 20px;
 }
-
 h2 { color: #9cd2ff; margin-top: 0; display: flex; align-items: center; gap: 8px; }
-
 .section-desc { color: #cfeeff; margin-top: 6px; margin-bottom: 12px; }
 
+/* Controls and cards */
 .controls { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
-.controls select { background:#0b0e13; color:#e6e6e6; border:1px solid #2a303b; padding:6px; border-radius:4px; }
-
+.controls select {
+  background:#0b0e13; color:#e6e6e6; border:1px solid #2a303b;
+  padding:6px; border-radius:4px;
+}
 .cards { display:flex; gap:12px; margin-top:10px; }
-.card { background:#0d1a24; padding:12px; border-radius:6px; border:1px solid #1f242d; flex:1; text-align:center; }
+.card {
+  background:#0d1a24; padding:12px; border-radius:6px;
+  border:1px solid #1f242d; flex:1; text-align:center;
+}
 .card-num { font-size:20px; color:#7abaff; margin-top:6px; }
 
-/* chart container baseline to prevent Chart.js measuring transient heights */
+/* Chart container: single source of truth for canvas sizing */
+.chart-wrapper {
+  width: 100%;
+  max-width: 100%;
+  height: 360px;        /* desktop baseline */
+  max-height: 60vh;     /* responsive cap */
+  min-height: 220px;    /* avoid too-small charts */
+  box-sizing: border-box;
+  position: relative;
+  margin-bottom: 0.75rem;
+}
+
+/* Canvas fills wrapper exactly; Chart.js should be created with maintainAspectRatio:false */
+.chart-wrapper canvas,
 .chart-box {
-    width: 100%;
-    height: 320px;
-    min-height: 320px;
-    margin-bottom: 12px;
-    background: transparent;
-    position: relative;
-    overflow: hidden;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
 }
 
-/* force canvas to a stable block height (prevents extreme attribute writes) */
-.chart-box canvas {
-    display: block;
-    height: 320px !important;
-    min-height: 320px !important;
-    width: 100% !important;
-}
-
-/* table wrapper: no transition on height to avoid intermediate huge computed heights */
+/* Table wrapper: single definition, explicit open/collapsed states */
 .table-wrapper {
-    transition: none;
-    overflow: hidden;
+  overflow: hidden;
+  transition: max-height 220ms ease;
+  max-height: 0;
+  margin-top: 0.5rem;
+  padding: 0;
 }
+.table-wrapper.open {
+  max-height: 50vh;
+  overflow-y: auto;
+  border-top: 1px solid #e6e6e6;
+  padding-top: 0.5rem;
+}
+.table-wrapper.collapsed { max-height: 0; padding: 0; }
 
-/* collapsed/expanded states */
-.table-wrapper.collapsed { max-height: 0; padding: 0 0; }
-.table-wrapper.expanded { max-height: 2000px; padding-top: 12px; }
-
-
+/* Tables */
 table { width:100%; border-collapse: collapse; margin-top: 8px; font-size:14px; }
 table thead { background: #1f242d; }
 table th, table td { padding: 10px; border-bottom: 1px solid #2a303b; text-align:left; }
 table tr:hover { background: #1a1f27; }
 table th { color: #7abaff; }
 
-.toggle-btn { background:#0d2a3a; color:#e6e6e6; border: none; padding:8px 12px; border-radius:6px; cursor:pointer; }
+/* Buttons and small UI */
+.section-controls { margin-top: 0.5rem; }
+.toggle-btn {
+  background:#0d2a3a; color:#e6e6e6; border: none;
+  padding:8px 12px; border-radius:6px; cursor:pointer;
+}
 .toggle-btn:hover { opacity:0.9; }
 
-.info { padding: 8px; background: #0d2a3a; border-left: 4px solid #4da6ff; border-radius:4px; color:#cfeeff; }
-
-.error { padding: 10px; background: #3a0d0d; border-left: 4px solid #ff4d4d; margin-bottom: 15px; border-radius: 4px; }
-
+.info {
+  padding: 8px; background: #0d2a3a; border-left: 4px solid #4da6ff;
+  border-radius:4px; color:#cfeeff;
+}
+.error {
+  padding: 10px; background: #3a0d0d; border-left: 4px solid #ff4d4d;
+  margin-bottom: 15px; border-radius: 4px;
+}
 .info-icon { font-size:14px; color:#9cd2ff; cursor:help; }
 
+/* Flare badges */
 .flare-x { background: rgba(255, 77, 77, 0.12); }
 .flare-m { background: rgba(255, 153, 51, 0.10); }
 .flare-c { background: rgba(255, 255, 102, 0.08); }
 .flare-b, .flare-a { background: rgba(102, 204, 255, 0.06); }
 
+/* Footer */
 footer { text-align:center; padding:16px; color:#666; font-size:13px; margin-top:10px; }
+
+/* Responsive adjustments */
+@media (max-width: 720px) {
+  .chart-wrapper { height: 260px; min-height: 180px; }
+  .table-wrapper.open { max-height: 40vh; }
+}

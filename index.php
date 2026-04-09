@@ -1,5 +1,5 @@
 <?php
-// index.php - orchestrator
+// index.php - orchestrator (refactored wrappers for stable chart layout)
 require_once 'includes/format.php';
 ?>
 <!doctype html>
@@ -46,30 +46,43 @@ require_once 'includes/format.php';
     </div>
   </section>
 
-  <section id="flares">
+  <section id="flares" class="data-section">
     <h2>Solar Flares <span class="info-icon" title="Solar flares are bursts of radiation from the Sun.">ℹ</span></h2>
     <p class="section-desc"><?= htmlspecialchars(description_for('flares')) ?></p>
-    <canvas id="flareChart" class="chart-box"></canvas>
+
+    <!-- stable wrapper prevents layout-driven canvas stretching -->
+    <div class="chart-wrapper" id="flareWrapper">
+      <canvas id="flareChart" class="chart-box"></canvas>
+    </div>
+
     <div class="section-controls">
       <button class="toggle-btn" data-target="flaresTable">Show details</button>
     </div>
     <div id="flaresTable" class="table-wrapper collapsed"></div>
   </section>
 
-  <section id="cmes">
+  <section id="cmes" class="data-section">
     <h2>Coronal Mass Ejections (CMEs) <span class="info-icon" title="CMEs are large expulsions of plasma and magnetic field from the Sun.">ℹ</span></h2>
     <p class="section-desc"><?= htmlspecialchars(description_for('cmes')) ?></p>
-    <canvas id="cmeChart" class="chart-box"></canvas>
+
+    <div class="chart-wrapper" id="cmeWrapper">
+      <canvas id="cmeChart" class="chart-box"></canvas>
+    </div>
+
     <div class="section-controls">
       <button class="toggle-btn" data-target="cmesTable">Show details</button>
     </div>
     <div id="cmesTable" class="table-wrapper collapsed"></div>
   </section>
 
-  <section id="radiation">
+  <section id="radiation" class="data-section">
     <h2>Radiation Storms <span class="info-icon" title="Radiation storms are increases in energetic particles from the Sun.">ℹ</span></h2>
     <p class="section-desc"><?= htmlspecialchars(description_for('radiation')) ?></p>
-    <canvas id="radChart" class="chart-box"></canvas>
+
+    <div class="chart-wrapper" id="radWrapper">
+      <canvas id="radChart" class="chart-box"></canvas>
+    </div>
+
     <div class="section-controls">
       <button class="toggle-btn" data-target="radTable">Show details</button>
     </div>

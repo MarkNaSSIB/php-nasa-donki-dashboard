@@ -1,11 +1,17 @@
-// public/app.js - Minimal, defensive charts and UI
+// public/app.js - Refactored: stable chart sizing, debounced resize, chunk-safe toggles
 // Assumes Chart.js is loaded on the page.
 
 const API = '/api.php';
 let currentRange = 30;
 const charts = { flare: null, cme: null, rad: null };
 const initialized = { flare: false, cme: false, rad: false };
-let resizeTimer = null;
+
+// map canvas id -> charts key
+const idToKey = {
+  flareChart: 'flare',
+  cmeChart: 'cme',
+  radChart: 'rad'
+};
 
 function $id(id) { return document.getElementById(id); }
 
@@ -27,38 +33,62 @@ function safeNumArray(arr, maxLen = 1000) {
   return out;
 }
 
+/**
+ * Ensure canvas has a reasonable baseline height so Chart.js measurements are stable.
+ * Prefer CSS (.chart-wrapper) to control final height; this only sets an initial inline
+ * height to avoid transient measurement issues on first render.
+ */
 function ensureCanvas(id, px = 320) {
   const c = $id(id);
   if (!c) return;
-  c.style.height = px + 'px';
-  c.style.minHeight = px + 'px';
-  c.setAttribute('height', px);
+  // Only set inline height if not already constrained by CSS
+  if (!c.style.height) {
+    c.style.height = px + 'px';
+    c.style.minHeight = px + 'px';
+  }
   // ensure the canvas has a 2D context before Chart.js uses it
   if (!c.getContext) return;
 }
 
+/**
+ * Create a bar chart and store it in the charts map.
+ * Charts are created with maintainAspectRatio:false so they fill the wrapper.
+ */
 function createBarChart(canvasId, labels, values, color) {
   ensureCanvas(canvasId, 320);
-  const ctx = $id(canvasId).getContext('2d');
-  // destroy existing
-  if (charts[canvasId.replace('Chart','').toLowerCase()]) {
-    try { charts[canvasId.replace('Chart','').toLowerCase()].destroy(); } catch(e){}
+  const el = $id(canvasId);
+  if (!el) return null;
+  const ctx = el.getContext('2d');
+  const key = idToKey[canvasId] || canvasId;
+
+  // destroy existing chart for this key
+  if (charts[key]) {
+    try { charts[key].destroy(); } catch (e) { /* ignore */ }
+    charts[key] = null;
   }
-  // create with responsive initially true to render, then disable auto-resize
+
   const chart = new Chart(ctx, {
     type: 'bar',
-    data: { labels: labels, datasets: [{ label: 'Count', data: values, backgroundColor: color }] },
+    data: {
+      labels: labels,
+      datasets: [{ label: 'Count', data: values, backgroundColor: color }]
+    },
     options: {
       responsive: true,
       maintainAspectRatio: false,
       animation: { duration: 200 },
-      plugins: { legend: { display: false } }
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#cfeeff' } },
+        y: { ticks: { color: '#cfeeff' }, beginAtZero: true }
+      }
     }
   });
-  // Prevent Chart.js from continuously auto-resizing after initial render
-  try { chart.options.responsive = false; } catch(e){}
-  // stabilize once
-  try { chart.resize(); chart.update(); } catch(e){}
+
+  // Stabilize once after initial render
+  try { chart.resize(); chart.update(); } catch (e) { /* ignore */ }
+
+  charts[key] = chart;
   return chart;
 }
 
@@ -66,12 +96,16 @@ function buildSummary(data) {
   const fl = Array.isArray(data.flares) ? data.flares.length : 0;
   const cm = Array.isArray(data.cmes) ? data.cmes.length : 0;
   const rd = Array.isArray(data.rads) ? data.rads.length : 0;
-  $id('summaryCards').innerHTML = `
-    <div class="card"><strong>Flares</strong><div class="card-num">${fl}</div></div>
-    <div class="card"><strong>CMEs</strong><div class="card-num">${cm}</div></div>
-    <div class="card"><strong>Radiation</strong><div class="card-num">${rd}</div></div>
-  `;
-  $id('lastUpdated').textContent = `Fetched: ${new Date().toISOString().replace('T',' ').replace(/\..+/, ' UTC')}`;
+  const container = $id('summaryCards');
+  if (container) {
+    container.innerHTML = `
+      <div class="card"><strong>Flares</strong><div class="card-num">${fl}</div></div>
+      <div class="card"><strong>CMEs</strong><div class="card-num">${cm}</div></div>
+      <div class="card"><strong>Radiation</strong><div class="card-num">${rd}</div></div>
+    `;
+  }
+  const lu = $id('lastUpdated');
+  if (lu) lu.textContent = `Fetched: ${new Date().toISOString().replace('T',' ').replace(/\..+/, ' UTC')}`;
 }
 
 function buildTable(id, rowsHtml) {
@@ -93,7 +127,7 @@ function rowsForCmes(cmes) {
   if (!Array.isArray(cmes) || cmes.length === 0) return '<div class="info">No CMEs in this range.</div>';
   const rows = cmes.slice(0,200).map(c => {
     const a = (c.cmeAnalyses && c.cmeAnalyses[0]) || {};
-    return `<tr><td>${c.startTime||'—'}</td><td>${a.speed||'—'}</td><td>${a.width||'—'}</td></tr>`;
+    return `<tr><td>${c.startTime||'—'}</td><td>${a.speed||'—'}</td><td>${a.halfAngle||a.width||'—'}</td></tr>`;
   }).join('');
   return `<table><thead><tr><th>Start</th><th>Speed</th><th>Width</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
@@ -105,23 +139,22 @@ function rowsForRads(rads) {
 }
 
 function updateAllCharts(data) {
-  // prepare aggregates defensively
+  // flares
   const flareAgg = data.flareAgg || {};
   const flareLabels = Object.keys(flareAgg);
   const flareValues = safeNumArray(flareLabels.map(k => flareAgg[k] || 0), 100);
-  if (!initialized.flare) initialized.flare = true;
   charts.flare = createBarChart('flareChart', flareLabels, flareValues, '#7abaff');
 
+  // cmes
   const cmeAgg = data.cmeAgg || {};
   const cmeLabels = Object.keys(cmeAgg);
   const cmeValues = safeNumArray(cmeLabels.map(k => cmeAgg[k] || 0), 100);
-  if (!initialized.cme) initialized.cme = true;
   charts.cme = createBarChart('cmeChart', cmeLabels, cmeValues, '#7abaff');
 
+  // radiation
   const radAgg = data.radAgg || {};
   const radLabels = Object.keys(radAgg);
   const radValues = safeNumArray(radLabels.map(k => radAgg[k] || 0), 100);
-  if (!initialized.rad) initialized.rad = true;
   charts.rad = createBarChart('radChart', radLabels, radValues, '#ffcc00');
 }
 
@@ -132,6 +165,28 @@ function updateTablesAndSummary(data) {
   buildTable('radTable', rowsForRads(data.rads));
 }
 
+// Debounced safe resize for charts
+function debounce(fn, wait) {
+  let t;
+  return function(...args) {
+    clearTimeout(t);
+    t = setTimeout(() => fn.apply(this, args), wait);
+  };
+}
+
+const safeResize = debounce(() => {
+  try {
+    Object.values(charts).forEach(ch => {
+      if (ch && typeof ch.resize === 'function') {
+        ch.resize();
+        ch.update();
+      }
+    });
+  } catch (e) {
+    console.error('safeResize error', e);
+  }
+}, 120);
+
 async function refresh(range = 30) {
   try {
     const data = await fetchData(range);
@@ -139,18 +194,12 @@ async function refresh(range = 30) {
     updateTablesAndSummary(data);
   } catch (err) {
     console.error(err);
-    $id('summaryCards').innerHTML = `<div class="error">Error: ${err.message}</div>`;
+    const sc = $id('summaryCards');
+    if (sc) sc.innerHTML = `<div class="error">Error: ${err.message}</div>`;
   }
 }
 
-// Debounced window resize: manually resize charts (if needed)
-function onWindowResize() {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    Object.values(charts).forEach(ch => { try { if (ch) ch.resize(); } catch(e){} });
-  }, 250);
-}
-
+// Setup controls and toggles
 function setupControls() {
   const sel = $id('rangeSelect');
   if (sel) {
@@ -166,14 +215,25 @@ function setupControls() {
       const targetId = btn.getAttribute('data-target');
       const target = $id(targetId);
       if (!target) return;
-      const collapsed = target.classList.toggle('collapsed');
-      btn.textContent = collapsed ? 'Show details' : 'Hide details';
+      const isOpen = target.classList.toggle('open');
+      // keep collapsed class for legacy compatibility
+      target.classList.toggle('collapsed', !isOpen);
+      btn.textContent = isOpen ? 'Hide details' : 'Show details';
       // After expand, give layout a moment then resize charts once
-      if (!collapsed) setTimeout(() => { Object.values(charts).forEach(ch => { try { if (ch) ch.resize(); } catch(e){} }); }, 200);
+      safeResize();
     });
   });
 
-  window.addEventListener('resize', onWindowResize);
+  // Observe chart-wrapper size changes and debounce resize
+  if (window.ResizeObserver) {
+    document.querySelectorAll('.chart-wrapper').forEach(wrapper => {
+      const ro = new ResizeObserver(debounce(() => safeResize(), 80));
+      ro.observe(wrapper);
+    });
+  }
+
+  // Window resize fallback
+  window.addEventListener('resize', debounce(() => safeResize(), 200));
 }
 
 document.addEventListener('DOMContentLoaded', () => {
