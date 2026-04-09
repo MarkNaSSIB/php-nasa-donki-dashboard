@@ -17,6 +17,8 @@ $flares = fetch_nasa('FLR', $params, 600);
 $cmes = fetch_nasa('CME', $params, 600);
 $rads = fetch_nasa('RBE', $params, 600);
 
+error_log('API RANGE DEBUG range=' . ($range ?? 'null') . ' computed_cmes_is_null=' . (is_null($cmes) ? '1' : '0') . ' caller=' . debug_backtrace()[1]['function'] ?? 'none');
+
 // Prepare chart aggregates
 $flareAgg = is_array($flares) ? aggregate_flare_classes($flares) : null;
 $cmeSpeeds = [];
