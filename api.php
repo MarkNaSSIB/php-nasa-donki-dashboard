@@ -29,6 +29,11 @@ $cmeAgg = cme_speed_buckets($cmeSpeeds);
 $radAgg = is_array($rads) ? aggregate_radiation_levels($rads) : null;
 
 header('Content-Type: application/json; charset=utf-8');
+
+// debug: log what the server is about to return for CMEs
+error_log('API DEBUG range=' . ($range ?? 'null') . ' cmes_is_null=' . (is_null($cmes) ? '1' : '0') . ' cmeAgg_keys=' . json_encode(array_keys((array)$cmeAgg)));
+
+
 echo json_encode([
     'range' => $range,
     'start' => $start,
