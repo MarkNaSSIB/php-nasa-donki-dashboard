@@ -13,6 +13,37 @@ $updated = date('c');
 function safe($arr, $key, $default = '') {
     return isset($arr[$key]) ? htmlspecialchars($arr[$key]) : $default;
 }
+
+// Extract flare classes for chart
+$flareClasses = [];
+if (is_array($flares)) {
+    foreach ($flares as $f) {
+        $cls = $f['classType'] ?? null;
+        if ($cls) {
+            $flareClasses[] = $cls;
+        }
+    }
+}
+
+// Extract CME speeds for chart
+$cmeSpeeds = [];
+if (is_array($cmes)) {
+    foreach ($cmes as $c) {
+        if (isset($c['cmeAnalyses'][0]['speed'])) {
+            $cmeSpeeds[] = $c['cmeAnalyses'][0]['speed'];
+        }
+    }
+}
+
+// Extract radiation storm severity for chart
+$radLevels = [];
+if (is_array($rads)) {
+    foreach ($rads as $r) {
+        if (isset($r['radiationLevel'])) {
+            $radLevels[] = $r['radiationLevel'];
+        }
+    }
+}
 ?>
 <!doctype html>
 <html>
@@ -20,14 +51,29 @@ function safe($arr, $key, $default = '') {
   <meta charset="utf-8">
   <title>Artemis Space Weather Dashboard</title>
   <link rel="stylesheet" href="/public/styles.css">
+  <link rel="icon" type="image/png" href="/public/favicon.png">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
-<header>
-  <h1>Artemis Space Weather Dashboard</h1>
+
+<!-- FIXED HEADER WITH NAVIGATION -->
+<header class="fixed-header">
+  <div class="header-inner">
+    <h1>Artemis Space Weather Dashboard</h1>
+    <nav>
+      <a href="#summary">Summary</a>
+      <a href="#flares">Solar Flares</a>
+      <a href="#cmes">CMEs</a>
+      <a href="#radiation">Radiation Storms</a>
+    </nav>
+  </div>
 </header>
 
-<section>
+<div class="page-offset"></div>
+
+<!-- SUMMARY SECTION -->
+<section id="summary">
   <div class="info">
     <strong>Last Updated:</strong> <?= $updated ?>
   </div>
@@ -61,8 +107,13 @@ function safe($arr, $key, $default = '') {
   </table>
 </section>
 
-<section>
-  <h2>Recent Solar Flares</h2>
+<!-- SOLAR FLARES -->
+<section id="flares">
+  <h2>Solar Flares</h2>
+
+  <!-- Chart -->
+  <canvas id="flareChart" class="chart-box"></canvas>
+
   <?php if (!is_array($flares)): ?>
     <div class="error">Error fetching solar flare data.</div>
   <?php else: ?>
@@ -79,7 +130,11 @@ function safe($arr, $key, $default = '') {
       </thead>
       <tbody>
         <?php foreach ($flares as $f): ?>
-          <tr>
+          <?php
+            $cls = $f['classType'] ?? '';
+            $clsLower = strtolower(substr($cls, 0, 1)); // x, m, c, b, a
+          ?>
+          <tr class="flare-<?= $clsLower ?>">
             <td><?= safe($f, 'beginTime') ?></td>
             <td><?= safe($f, 'peakTime') ?></td>
             <td><?= safe($f, 'endTime') ?></td>
@@ -100,8 +155,13 @@ function safe($arr, $key, $default = '') {
   <?php endif; ?>
 </section>
 
-<section>
-  <h2>Recent Coronal Mass Ejections (CMEs)</h2>
+<!-- CMEs -->
+<section id="cmes">
+  <h2>Coronal Mass Ejections (CMEs)</h2>
+
+  <!-- Chart -->
+  <canvas id="cmeChart" class="chart-box"></canvas>
+
   <?php if (!is_array($cmes)): ?>
     <div class="error">Error fetching CME data.</div>
   <?php else: ?>
@@ -130,8 +190,13 @@ function safe($arr, $key, $default = '') {
   <?php endif; ?>
 </section>
 
-<section>
-  <h2>Recent Radiation Storms</h2>
+<!-- RADIATION STORMS -->
+<section id="radiation">
+  <h2>Radiation Storms</h2>
+
+  <!-- Chart -->
+  <canvas id="radChart" class="chart-box"></canvas>
+
   <?php if (!is_array($rads)): ?>
     <div class="error">Error fetching radiation storm data.</div>
   <?php else: ?>
@@ -168,6 +233,58 @@ function safe($arr, $key, $default = '') {
 <footer>
   Demo uses NASA DONKI API — Data courtesy of NASA/NOAA
 </footer>
+
+<!-- CHART.JS SCRIPTS -->
+<script>
+const flareClasses = <?= json_encode($flareClasses) ?>;
+const cmeSpeeds = <?= json_encode($cmeSpeeds) ?>;
+const radLevels = <?= json_encode($radLevels) ?>;
+
+// Flare Chart
+new Chart(document.getElementById('flareChart'), {
+    type: 'bar',
+    data: {
+        labels: flareClasses,
+        datasets: [{
+            label: 'Flare Class',
+            data: flareClasses.map(c => parseInt(c.substring(1)) || 1),
+            backgroundColor: flareClasses.map(c => {
+                if (c.startsWith('X')) return '#ff4d4d';
+                if (c.startsWith('M')) return '#ff9933';
+                if (c.startsWith('C')) return '#ffff66';
+                return '#66ccff';
+            })
+        }]
+    }
+});
+
+// CME Speed Chart
+new Chart(document.getElementById('cmeChart'), {
+    type: 'line',
+    data: {
+        labels: cmeSpeeds.map((_, i) => i + 1),
+        datasets: [{
+            label: 'CME Speed (km/s)',
+            data: cmeSpeeds,
+            borderColor: '#7abaff',
+            backgroundColor: 'rgba(122,186,255,0.2)'
+        }]
+    }
+});
+
+// Radiation Chart
+new Chart(document.getElementById('radChart'), {
+    type: 'bar',
+    data: {
+        labels: radLevels.map((_, i) => i + 1),
+        datasets: [{
+            label: 'Radiation Level',
+            data: radLevels,
+            backgroundColor: '#ffcc00'
+        }]
+    }
+});
+</script>
 
 </body>
 </html>
