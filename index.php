@@ -1,6 +1,3 @@
-<?php file_put_contents('debug.log', "HIT: " . $_SERVER['REQUEST_URI'] . "\n", FILE_APPEND); ?>
-
-
 <?php
 require_once 'functions.php';
 
@@ -22,7 +19,7 @@ function safe($arr, $key, $default = '') {
 <head>
   <meta charset="utf-8">
   <title>Artemis Space Weather Dashboard</title>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="/public/styles.css">
 </head>
 
 <body>
