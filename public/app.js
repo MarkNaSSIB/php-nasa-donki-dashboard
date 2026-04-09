@@ -155,6 +155,9 @@ function updateCharts(data) {
     data: { labels: flareLabels, datasets: [{ label: 'Count', data: flareValues, backgroundColor: flareColors }] },
     options: { responsive: true, maintainAspectRatio: false }
   });
+  // add this right after creating the chart instance
+charts.flare.options.responsive = false;
+
 
   // CME chart: buckets
   const cmeAgg = data.cmeAgg || {};
@@ -167,6 +170,9 @@ function updateCharts(data) {
     data: { labels: cmeLabels, datasets: [{ label: 'Count', data: cmeValues, backgroundColor: '#7abaff' }] },
     options: { responsive: true, maintainAspectRatio: false }
   });
+  charts.cme.options.responsive = false;
+
+
 
   // Radiation chart
   const radAgg = data.radAgg || {};
@@ -179,7 +185,7 @@ function updateCharts(data) {
     data: { labels: radLabels, datasets: [{ label: 'Count', data: radValues, backgroundColor: '#ffcc00' }] },
     options: { responsive: true, maintainAspectRatio: false }
   });
-
+  charts.rad.options.responsive = false;
   // After creating charts, schedule a safe resize to stabilize layout
   safeResizeAll(150);
 }
