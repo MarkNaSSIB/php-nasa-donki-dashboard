@@ -1,0 +1,97 @@
+/* ===========================
+   Global Layout + Theme
+   =========================== */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #0b0e13;
+    color: #e6e6e6;
+    line-height: 1.6;
+}
+
+header {
+    background: #11151c;
+    padding: 20px;
+    text-align: center;
+    border-bottom: 1px solid #1f242d;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 28px;
+    color: #7abaff;
+    letter-spacing: 1px;
+}
+
+section {
+    max-width: 900px;
+    margin: 30px auto;
+    padding: 20px;
+    background: #141820;
+    border-radius: 8px;
+    border: 1px solid #1f242d;
+    box-shadow: 0 0 10px rgba(0,0,0,0.4);
+}
+
+h2 {
+    color: #9cd2ff;
+    margin-top: 0;
+}
+
+/* ===========================
+   Table Styling
+   =========================== */
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 14px;
+}
+
+table thead {
+    background: #1f242d;
+}
+
+table th, table td {
+    padding: 10px;
+    border-bottom: 1px solid #2a303b;
+}
+
+table tr:hover {
+    background: #1a1f27;
+}
+
+table th {
+    text-align: left;
+    color: #7abaff;
+}
+
+/* ===========================
+   Status / Error Messages
+   =========================== */
+.error {
+    padding: 10px;
+    background: #3a0d0d;
+    border-left: 4px solid #ff4d4d;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+.info {
+    padding: 10px;
+    background: #0d2a3a;
+    border-left: 4px solid #4da6ff;
+    margin-bottom: 15px;
+    border-radius: 4px;
+}
+
+/* ===========================
+   Footer
+   =========================== */
+footer {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-size: 13px;
+}
